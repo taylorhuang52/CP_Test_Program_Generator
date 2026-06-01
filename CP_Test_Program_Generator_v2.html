@@ -2111,7 +2111,11 @@ function downloadPln() {
     '$1'+fs.pmu_comp+'$2');
   text = text.replace(/(FORCE_V_PMU\s*\(PMU\d*\s*,\s*VZ0_[^,]+,\s*@)24V/g,
     '$1'+fs.ir0_comp);
-  text = text.replace(/(avg\s*=\s*)40(\s*;.*530mV)/g,  '$1'+fs.ir0_530+'$2');
+  text = text.replace(/(VZ0_[01]\s*\[i\]\s*=\s*)0\.8(\s*-\s*VZ0\[i\])/g,
+    '$1'+fs.ir0_vzoff+'$2');
+  text = text.replace(/(avg\s*=\s*)40(\s*;.*if same)/g,  '$1'+fs.ir0_530+'$2');
+  text = text.replace(/(FORCE_[IV]_MLDPS\([^,]+,[^,]+,\s*@)1A(\s*[,)])/g,
+    '$1'+fs.mldps_i+'$2');
   text = text.replace(/(avg\s*=\s*)20(\s*;.*difference)/g,'$1'+fs.ir0_avg+'$2');
   text = text.replace(/(MEAS_I_PMU\(PMU,\s*1mS,\s*)340(\s*,\s*AVE)/g,
     '$1'+fs.ir22_avg+'$2');
