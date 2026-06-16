@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文字檔差異比較工具</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #1d2430;
+      --muted: #657286;
+      --line: #d9dee7;
+      --blue: #2458d3;
+      --blue-2: #e8efff;
+      --green: #147d4f;
+      --green-2: #e7f7ee;
+      --red: #b42318;
+      --red-2: #fff0ed;
+      --amber: #99670f;
+      --amber-2: #fff5d7;
+      --code: #151a22;
+      --shadow: 0 10px 28px rgba(29, 36, 48, 0.08);
+      font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: #172033;
+      color: #fff;
+      padding: 22px clamp(16px, 4vw, 42px);
+      border-bottom: 4px solid #30a46c;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(24px, 3vw, 34px);
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 15px;
+    }
+
+    main {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: 22px clamp(12px, 3vw, 28px) 44px;
+    }
+
+    .toolbar,
+    .summary,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      gap: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .file-box {
+      border: 1px dashed #9aa7ba;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 142px;
+      background: #fbfcff;
+    }
+
+    .file-box h2,
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .file-meta {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 38px;
+      overflow-wrap: anywhere;
+    }
+
+    .controls {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    select,
+    button {
+      min-height: 38px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .stat {
+      border-left: 4px solid var(--line);
+      padding: 8px 10px;
+      min-height: 64px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1.1;
+      color: var(--code);
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat.added { border-color: var(--green); }
+    .stat.removed { border-color: var(--red); }
+    .stat.changed { border-color: var(--amber); }
+    .stat.same { border-color: var(--blue); }
+
+    .view-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+
+    .view-tabs button.active {
+      border-color: var(--blue);
+      background: var(--blue-2);
+      color: #163f9f;
+    }
+
+    .panel {
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .diff-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 330px);
+      min-height: 360px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e7ebf2;
+      vertical-align: top;
+      padding: 5px 8px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #eef2f7;
+      color: #334155;
+      text-align: left;
+      font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
+      font-size: 13px;
+    }
+
+    .line-no {
+      width: 72px;
+      color: #6b7280;
+      text-align: right;
+      user-select: none;
+      background: rgba(245, 247, 250, 0.72);
+    }
+
+    .status {
+      width: 74px;
+      text-align: center;
+      font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
+      font-weight: 700;
+    }
+
+    .code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: var(--code);
+    }
+
+    tr.same .status { color: var(--muted); }
+    tr.add .status,
+    tr.add td { background: var(--green-2); }
+    tr.remove .status,
+    tr.remove td { background: var(--red-2); }
+    tr.change .status,
+    tr.change td { background: var(--amber-2); }
+    tr.context td { background: #fff; }
+
+    mark {
+      color: inherit;
+      padding: 0 1px;
+      border-radius: 2px;
+      background: rgba(245, 158, 11, 0.35);
+    }
+
+    .hidden { display: none; }
+
+    .empty {
+      padding: 44px 18px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    @media (max-width: 860px) {
+      .toolbar,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-head {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .panel-actions {
+        justify-content: flex-start;
+      }
+
+      .diff-wrap {
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>文字檔差異比較工具</h1>
+    <p>支援 .txt / .csv / .pln，所有比較都在本機瀏覽器完成。</p>
+  </header>
+
+  <main>
+    <section class="toolbar" aria-label="file upload and options">
+      <div class="file-box">
+        <h2>原始檔 A</h2>
+        <input id="fileA" type="file" accept=".txt,.csv,.pln,text/plain,text/csv">
+        <div id="metaA" class="file-meta">尚未選擇檔案</div>
+      </div>
+
+      <div class="file-box">
+        <h2>比較檔 B</h2>
+        <input id="fileB" type="file" accept=".txt,.csv,.pln,text/plain,text/csv">
+        <div id="metaB" class="file-meta">尚未選擇檔案</div>
+      </div>
+
+      <div class="controls">
+        <label>
+          編碼
+          <select id="encoding">
+            <option value="utf-8">UTF-8</option>
+            <option value="big5">Big5</option>
+            <option value="shift_jis">Shift-JIS</option>
+            <option value="windows-1252">Windows-1252</option>
+          </select>
+        </label>
+        <label><input id="ignoreCase" type="checkbox"> 忽略大小寫</label>
+        <label><input id="ignoreTrim" type="checkbox"> 忽略前後空白</label>
+        <label><input id="ignoreBlank" type="checkbox"> 忽略空白行</label>
+        <label><input id="onlyDiff" type="checkbox"> 只顯示不同</label>
+        <button id="compareBtn" class="primary" disabled>開始比較</button>
+        <button id="clearBtn">清除</button>
+      </div>
+    </section>
+
+    <section class="summary" aria-label="comparison summary">
+      <div class="stat same"><strong id="sameCount">0</strong><span>相同</span></div>
+      <div class="stat changed"><strong id="changedCount">0</strong><span>修改</span></div>
+      <div class="stat added"><strong id="addedCount">0</strong><span>B 新增</span></div>
+      <div class="stat removed"><strong id="removedCount">0</strong><span>A 刪除</span></div>
+      <div class="stat"><strong id="totalCount">0</strong><span>比較列數</span></div>
+    </section>
+
+    <div class="view-tabs" aria-label="view selector">
+      <button id="sideTab" class="active" data-view="side">左右對照</button>
+      <button id="unifiedTab" data-view="unified">合併檢視</button>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="section-title">比較結果</div>
+          <div id="resultNote" class="file-meta">請先選擇兩個檔案。</div>
+        </div>
+        <div class="panel-actions">
+          <button id="downloadTxt" disabled>下載 TXT</button>
+          <button id="downloadCsv" disabled>下載 CSV</button>
+          <button id="downloadHtml" disabled>下載 HTML</button>
+        </div>
+      </div>
+      <div id="result" class="diff-wrap">
+        <div class="empty">比較完成後會在這裡顯示差異。</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      fileA: null,
+      fileB: null,
+      textA: "",
+      textB: "",
+      rows: [],
+      view: "side"
+    };
+
+    const els = {
+      fileA: document.getElementById("fileA"),
+      fileB: document.getElementById("fileB"),
+      metaA: document.getElementById("metaA"),
+      metaB: document.getElementById("metaB"),
+      encoding: document.getElementById("encoding"),
+      ignoreCase: document.getElementById("ignoreCase"),
+      ignoreTrim: document.getElementById("ignoreTrim"),
+      ignoreBlank: document.getElementById("ignoreBlank"),
+      onlyDiff: document.getElementById("onlyDiff"),
+      compareBtn: document.getElementById("compareBtn"),
+      clearBtn: document.getElementById("clearBtn"),
+      result: document.getElementById("result"),
+      resultNote: document.getElementById("resultNote"),
+      sameCount: document.getElementById("sameCount"),
+      changedCount: document.getElementById("changedCount"),
+      addedCount: document.getElementById("addedCount"),
+      removedCount: document.getElementById("removedCount"),
+      totalCount: document.getElementById("totalCount"),
+      downloadTxt: document.getElementById("downloadTxt"),
+      downloadCsv: document.getElementById("downloadCsv"),
+      downloadHtml: document.getElementById("downloadHtml")
+    };
+
+    els.fileA.addEventListener("change", () => selectFile("A"));
+    els.fileB.addEventListener("change", () => selectFile("B"));
+    els.compareBtn.addEventListener("click", compare);
+    els.clearBtn.addEventListener("click", clearAll);
+    els.onlyDiff.addEventListener("change", render);
+    els.downloadTxt.addEventListener("click", () => download("txt"));
+    els.downloadCsv.addEventListener("click", () => download("csv"));
+    els.downloadHtml.addEventListener("click", () => download("html"));
+
+    document.querySelectorAll(".view-tabs button").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.view = button.dataset.view;
+        document.querySelectorAll(".view-tabs button").forEach((b) => b.classList.toggle("active", b === button));
+        render();
+      });
+    });
+
+    function selectFile(which) {
+      const input = which === "A" ? els.fileA : els.fileB;
+      const file = input.files[0] || null;
+      state["file" + which] = file;
+      document.getElementById("meta" + which).textContent = file ? formatFile(file) : "尚未選擇檔案";
+      els.compareBtn.disabled = !(state.fileA && state.fileB);
+    }
+
+    function formatFile(file) {
+      const size = file.size >= 1024 * 1024
+        ? (file.size / 1024 / 1024).toFixed(2) + " MB"
+        : (file.size / 1024).toFixed(1) + " KB";
+      return `${file.name} | ${size} | ${new Date(file.lastModified).toLocaleString()}`;
+    }
+
+    async function compare() {
+      if (!state.fileA || !state.fileB) return;
+      setBusy(true);
+      try {
+        const [textA, textB] = await Promise.all([readFile(state.fileA), readFile(state.fileB)]);
+        state.textA = textA;
+        state.textB = textB;
+        const linesA = prepareLines(textA);
+        const linesB = prepareLines(textB);
+        state.rows = buildDiff(linesA, linesB);
+        render();
+        enableDownloads(true);
+      } catch (error) {
+        els.result.innerHTML = `<div class="empty">讀取檔案失敗：${escapeHtml(error.message)}</div>`;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function readFile(file) {
+      const buffer = await file.arrayBuffer();
+      const decoder = new TextDecoder(els.encoding.value, { fatal: false });
+      return decoder.decode(buffer).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    }
+
+    function prepareLines(text) {
+      return text.split("\n")
+        .map((raw, index) => {
+          let key = raw;
+          if (els.ignoreTrim.checked) key = key.trim();
+          if (els.ignoreCase.checked) key = key.toLowerCase();
+          return { raw, key, line: index + 1 };
+        })
+        .filter((item) => !(els.ignoreBlank.checked && item.key.trim() === ""));
+    }
+
+    function buildDiff(a, b) {
+      const cells = (a.length + 1) * (b.length + 1);
+      if (cells > 9000000) return buildFastDiff(a, b);
+
+      const width = b.length + 1;
+      const dp = new Uint32Array((a.length + 1) * width);
+      for (let i = a.length - 1; i >= 0; i--) {
+        for (let j = b.length - 1; j >= 0; j--) {
+          const offset = i * width + j;
+          if (a[i].key === b[j].key) {
+            dp[offset] = dp[(i + 1) * width + j + 1] + 1;
+          } else {
+            dp[offset] = Math.max(dp[(i + 1) * width + j], dp[i * width + j + 1]);
+          }
+        }
+      }
+
+      const operations = [];
+      let i = 0;
+      let j = 0;
+      while (i < a.length && j < b.length) {
+        if (a[i].key === b[j].key) {
+          operations.push({ type: "same", a: a[i++], b: b[j++] });
+        } else if (dp[(i + 1) * width + j] >= dp[i * width + j + 1]) {
+          operations.push({ type: "remove", a: a[i++] });
+        } else {
+          operations.push({ type: "add", b: b[j++] });
+        }
+      }
+      while (i < a.length) operations.push({ type: "remove", a: a[i++] });
+      while (j < b.length) operations.push({ type: "add", b: b[j++] });
+      return pairChanges(operations);
+    }
+
+    function buildFastDiff(a, b) {
+      const max = Math.max(a.length, b.length);
+      const rows = [];
+      for (let i = 0; i < max; i++) {
+        const left = a[i] || null;
+        const right = b[i] || null;
+        if (left && right && left.key === right.key) rows.push({ type: "same", a: left, b: right });
+        else if (left && right) rows.push({ type: "change", a: left, b: right });
+        else if (left) rows.push({ type: "remove", a: left, b: null });
+        else rows.push({ type: "add", a: null, b: right });
+      }
+      rows.fastMode = true;
+      return rows;
+    }
+
+    function pairChanges(operations) {
+      const rows = [];
+      for (let i = 0; i < operations.length; i++) {
+        const current = operations[i];
+        const next = operations[i + 1];
+        if (current.type === "remove" && next && next.type === "add") {
+          rows.push({ type: "change", a: current.a, b: next.b });
+          i++;
+        } else if (current.type === "add" && next && next.type === "remove") {
+          rows.push({ type: "change", a: next.a, b: current.b });
+          i++;
+        } else {
+          rows.push({ type: current.type, a: current.a || null, b: current.b || null });
+        }
+      }
+      return rows;
+    }
+
+    function render() {
+      const visibleRows = els.onlyDiff.checked ? state.rows.filter((row) => row.type !== "same") : state.rows;
+      updateSummary(state.rows);
+
+      if (!state.rows.length) {
+        els.result.innerHTML = "<div class=\"empty\">尚未產生比較結果。</div>";
+        return;
+      }
+
+      els.resultNote.textContent = state.rows.fastMode
+        ? "檔案較大，已使用快速逐列模式。"
+        : `${state.fileA.name} 與 ${state.fileB.name}`;
+
+      els.result.innerHTML = state.view === "side" ? renderSideBySide(visibleRows) : renderUnified(visibleRows);
+    }
+
+    function updateSummary(rows) {
+      const counts = { same: 0, change: 0, add: 0, remove: 0 };
+      rows.forEach((row) => counts[row.type]++);
+      els.sameCount.textContent = counts.same;
+      els.changedCount.textContent = counts.change;
+      els.addedCount.textContent = counts.add;
+      els.removedCount.textContent = counts.remove;
+      els.totalCount.textContent = rows.length;
+    }
+
+    function renderSideBySide(rows) {
+      return `<table>
+        <thead>
+          <tr>
+            <th class="status">狀態</th>
+            <th class="line-no">A 行</th>
+            <th>A 內容</th>
+            <th class="line-no">B 行</th>
+            <th>B 內容</th>
+          </tr>
+        </thead>
+        <tbody>${rows.map(renderSideRow).join("")}</tbody>
+      </table>`;
+    }
+
+    function renderSideRow(row) {
+      const cls = rowClass(row.type);
+      const label = rowLabel(row.type);
+      const aText = row.a ? row.a.raw : "";
+      const bText = row.b ? row.b.raw : "";
+      const [aHtml, bHtml] = row.type === "change" ? markChanged(aText, bText) : [escapeHtml(aText), escapeHtml(bText)];
+      return `<tr class="${cls}">
+        <td class="status">${label}</td>
+        <td class="line-no">${row.a ? row.a.line : ""}</td>
+        <td class="code">${aHtml}</td>
+        <td class="line-no">${row.b ? row.b.line : ""}</td>
+        <td class="code">${bHtml}</td>
+      </tr>`;
+    }
+
+    function renderUnified(rows) {
+      const lines = [];
+      rows.forEach((row) => {
+        if (row.type === "same") {
+          lines.push(renderUnifiedLine("same", "=", row.a.line, row.a.raw));
+        } else if (row.type === "remove") {
+          lines.push(renderUnifiedLine("remove", "-", row.a.line, row.a.raw));
+        } else if (row.type === "add") {
+          lines.push(renderUnifiedLine("add", "+", row.b.line, row.b.raw));
+        } else {
+          const marked = markChanged(row.a.raw, row.b.raw);
+          lines.push(renderUnifiedLine("change", "-", row.a.line, marked[0], true));
+          lines.push(renderUnifiedLine("change", "+", row.b.line, marked[1], true));
+        }
+      });
+
+      return `<table>
+        <thead>
+          <tr>
+            <th class="status">狀態</th>
+            <th class="line-no">行號</th>
+            <th>內容</th>
+          </tr>
+        </thead>
+        <tbody>${lines.join("")}</tbody>
+      </table>`;
+    }
+
+    function renderUnifiedLine(type, label, line, text, alreadyHtml = false) {
+      return `<tr class="${rowClass(type)}">
+        <td class="status">${label}</td>
+        <td class="line-no">${line}</td>
+        <td class="code">${alreadyHtml ? text : escapeHtml(text)}</td>
+      </tr>`;
+    }
+
+    function markChanged(a, b) {
+      let start = 0;
+      while (start < a.length && start < b.length && a[start] === b[start]) start++;
+      let endA = a.length - 1;
+      let endB = b.length - 1;
+      while (endA >= start && endB >= start && a[endA] === b[endB]) {
+        endA--;
+        endB--;
+      }
+      return [wrapMark(a, start, endA), wrapMark(b, start, endB)];
+    }
+
+    function wrapMark(text, start, end) {
+      if (end < start) return escapeHtml(text);
+      return escapeHtml(text.slice(0, start)) +
+        "<mark>" + escapeHtml(text.slice(start, end + 1)) + "</mark>" +
+        escapeHtml(text.slice(end + 1));
+    }
+
+    function rowClass(type) {
+      return type === "same" ? "same" : type === "add" ? "add" : type === "remove" ? "remove" : "change";
+    }
+
+    function rowLabel(type) {
+      return type === "same" ? "相同" : type === "add" ? "新增" : type === "remove" ? "刪除" : "修改";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function setBusy(isBusy) {
+      els.compareBtn.disabled = isBusy || !(state.fileA && state.fileB);
+      els.compareBtn.textContent = isBusy ? "比較中..." : "開始比較";
+    }
+
+    function enableDownloads(enabled) {
+      els.downloadTxt.disabled = !enabled;
+      els.downloadCsv.disabled = !enabled;
+      els.downloadHtml.disabled = !enabled;
+    }
+
+    function clearAll() {
+      state.fileA = null;
+      state.fileB = null;
+      state.textA = "";
+      state.textB = "";
+      state.rows = [];
+      els.fileA.value = "";
+      els.fileB.value = "";
+      els.metaA.textContent = "尚未選擇檔案";
+      els.metaB.textContent = "尚未選擇檔案";
+      els.resultNote.textContent = "請先選擇兩個檔案。";
+      els.result.innerHTML = "<div class=\"empty\">比較完成後會在這裡顯示差異。</div>";
+      updateSummary([]);
+      enableDownloads(false);
+      setBusy(false);
+    }
+
+    function download(type) {
+      const base = `diff_${nameWithoutExt(state.fileA.name)}_vs_${nameWithoutExt(state.fileB.name)}`;
+      if (type === "txt") saveFile(`${base}.txt`, "text/plain;charset=utf-8", buildTxtReport());
+      if (type === "csv") saveFile(`${base}.csv`, "text/csv;charset=utf-8", buildCsvReport());
+      if (type === "html") saveFile(`${base}.html`, "text/html;charset=utf-8", buildHtmlReport());
+    }
+
+    function buildTxtReport() {
+      const header = [
+        "文字檔差異比較結果",
+        `A: ${state.fileA.name}`,
+        `B: ${state.fileB.name}`,
+        `產生時間: ${new Date().toLocaleString()}`,
+        ""
+      ];
+      return header.concat(state.rows.map((row) => {
+        const aLine = row.a ? row.a.line : "";
+        const bLine = row.b ? row.b.line : "";
+        const aText = row.a ? row.a.raw : "";
+        const bText = row.b ? row.b.raw : "";
+        return `[${rowLabel(row.type)}] A:${aLine} B:${bLine}\nA> ${aText}\nB> ${bText}`;
+      })).join("\n");
+    }
+
+    function buildCsvReport() {
+      const rows = [["status", "line_a", "content_a", "line_b", "content_b"]];
+      state.rows.forEach((row) => rows.push([
+        rowLabel(row.type),
+        row.a ? row.a.line : "",
+        row.a ? row.a.raw : "",
+        row.b ? row.b.line : "",
+        row.b ? row.b.raw : ""
+      ]));
+      return "\uFEFF" + rows.map((row) => row.map(csvCell).join(",")).join("\n");
+    }
+
+    function buildHtmlReport() {
+      const content = renderSideBySide(state.rows);
+      return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>比較結果</title>
+      <style>body{font-family:Segoe UI,Noto Sans TC,Arial,sans-serif;margin:20px;color:#1d2430}table{width:100%;border-collapse:collapse;font-family:Consolas,Courier New,monospace;font-size:13px;table-layout:fixed}th,td{border:1px solid #d9dee7;padding:5px 8px;vertical-align:top}.line-no{width:72px;text-align:right;color:#657286}.status{width:74px;text-align:center;font-weight:700}.code{white-space:pre-wrap;overflow-wrap:anywhere}.add td{background:#e7f7ee}.remove td{background:#fff0ed}.change td{background:#fff5d7}mark{background:rgba(245,158,11,.35)}</style>
+      </head><body><h1>比較結果</h1><p>A: ${escapeHtml(state.fileA.name)}<br>B: ${escapeHtml(state.fileB.name)}<br>產生時間: ${escapeHtml(new Date().toLocaleString())}</p>${content}</body></html>`;
+    }
+
+    function csvCell(value) {
+      return `"${String(value).replace(/"/g, '""')}"`;
+    }
+
+    function nameWithoutExt(name) {
+      return name.replace(/\.[^.]+$/, "").replace(/[^\w.-]+/g, "_").slice(0, 80);
+    }
+
+    function saveFile(filename, type, content) {
+      const blob = new Blob([content], { type });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      URL.revokeObjectURL(link.href);
+      link.remove();
+    }
+  </script>
+</body>
+</html>
